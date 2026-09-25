@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Support CRM</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">S</div>
+
+            <div>
+                <h2>SupportCRM</h2>
+                <span>Customer Support</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+
+            <a href="#" class="nav-item active">
+                <span>▦</span>
+                Dashboard
+            </a>
+
+            <a href="#tickets" class="nav-item">
+                <span>🎫</span>
+                Tickets
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="status-dot"></div>
+            System Online
+        </div>
+
+    </aside>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <main class="main-content">
+
+        <!-- TOP BAR -->
+
+        <header class="topbar">
+
+            <div>
+                <h1>Dashboard</h1>
+                <p>Manage and track customer support tickets.</p>
+            </div>
+
+            <button
+                class="primary-btn"
+                id="openCreateModalBtn"
+            >
+                <span>+</span>
+                New Ticket
+            </button>
+
+        </header>
+
+
+        <!-- ================= STATISTICS ================= -->
+
+        <section class="stats-grid">
+
+            <div class="stat-card">
+
+                <div class="stat-icon total-icon">
+                    🎫
+                </div>
+
+                <div>
+                    <p>Total Tickets</p>
+                    <h2 id="totalTickets">0</h2>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon open-icon">
+                    ●
+                </div>
+
+                <div>
+                    <p>Open</p>
+                    <h2 id="openTickets">0</h2>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon progress-icon">
+                    ◐
+                </div>
+
+                <div>
+                    <p>In Progress</p>
+                    <h2 id="progressTickets">0</h2>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon closed-icon">
+                    ✓
+                </div>
+
+                <div>
+                    <p>Closed</p>
+                    <h2 id="closedTickets">0</h2>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= TICKETS ================= -->
+
+        <section
+            class="tickets-section"
+            id="tickets"
+        >
+
+            <div class="section-header">
+
+                <div>
+                    <h2>Support Tickets</h2>
+                    <p>View, search and manage customer tickets.</p>
+                </div>
+
+                <button
+                    class="refresh-btn"
+                    id="refreshBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+
+            <!-- SEARCH + FILTER -->
+
+            <div class="toolbar">
+
+                <div class="search-box">
+
+                    <span>⌕</span>
+
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Search by ID, name, email, subject..."
+                    >
+
+                </div>
+
+
+                <select
+                    id="statusFilter"
+                    class="status-filter"
+                >
+                    <option value="">All Statuses</option>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Closed">Closed</option>
+                </select>
+
+            </div>
+
+
+            <!-- TABLE -->
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Customer</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Action</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="ticketTableBody">
+
+                        <tr>
+                            <td
+                                colspan="6"
+                                class="loading"
+                            >
+                                Loading tickets...
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ================================================= -->
+    <!-- CREATE TICKET MODAL -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="createModal"
+    >
+
+        <div class="modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2>Create New Ticket</h2>
+                    <p>Create a support request for a customer.</p>
+                </div>
+
+                <button
+                    class="close-btn"
+                    data-close="createModal"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="createTicketForm">
+
+                <div class="form-group">
+
+                    <label>
+                        Customer Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="customerName"
+                        placeholder="Enter customer name"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Customer Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="customerEmail"
+                        placeholder="customer@example.com"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Issue Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="ticketSubject"
+                        placeholder="What is the issue?"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Description
+                    </label>
+
+                    <textarea
+                        id="ticketDescription"
+                        rows="5"
+                        placeholder="Describe the customer's issue..."
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-btn"
+                        data-close="createModal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="primary-btn"
+                    >
+                        Create Ticket
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- TICKET DETAIL MODAL -->
+    <!-- ================================================= -->
+
+    <div
+        class="modal-overlay"
+        id="detailModal"
+    >
+
+        <div class="modal detail-modal">
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 id="detailTitle">
+                        Ticket Details
+                    </h2>
+
+                    <p id="detailTicketId"></p>
+                </div>
+
+                <button
+                    class="close-btn"
+                    data-close="detailModal"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div id="ticketDetails">
+
+                <!-- Filled by JavaScript -->
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- TOAST -->
+    <!-- ================================================= -->
+
+    <div
+        id="toast"
+        class="toast"
+    >
+        <span id="toastMessage"></span>
+    </div>
+
+
+    <script src="/static/js/app.js"></script>
+
+</body>
+
+</html>
