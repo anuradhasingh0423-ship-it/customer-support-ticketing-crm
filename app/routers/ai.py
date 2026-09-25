@@ -19,6 +19,102 @@ class TicketAIRequest(BaseModel):
     notes: str = ""
 
 
+# -------------------------------------------------------------
+# Determine ticket priority using simple business rules.
+# Priority is handled by Python instead of the AI model so that
+# the result is consistent.
+# -------------------------------------------------------------
+
+def determine_priority(subject: str, description: str) -> tuple[str, str]:
+
+    text = f"{subject} {description}".lower()
+
+    # High-priority situations
+    high_keywords = [
+        "security breach",
+        "hacked",
+        "account compromised",
+        "fraud",
+        "unauthorized access",
+        "critical",
+        "emergency",
+        "major outage",
+        "serious financial loss"
+    ]
+
+    for keyword in high_keywords:
+        if keyword in text:
+            return (
+                "High",
+                f"High priority because the ticket mentions {keyword}."
+            )
+
+    # Medium-priority situations
+    medium_keywords = [
+        "refund",
+        "payment",
+        "order not received",
+        "order hasn't arrived",
+        "order has not arrived",
+        "not received",
+        "delayed",
+        "delay",
+        "missing order",
+        "delivery"
+    ]
+
+    for keyword in medium_keywords:
+        if keyword in text:
+            return (
+                "Medium",
+                "The ticket concerns an unresolved customer issue."
+            )
+
+    # General / informational tickets
+    return (
+        "Low",
+        "The ticket appears to be a general or low-urgency request."
+    )
+
+
+# -------------------------------------------------------------
+# Generate a safe customer reply based on ticket status.
+# Python controls this so the AI cannot invent actions,
+# investigations, resolutions, or future promises.
+# -------------------------------------------------------------
+
+def generate_safe_reply(
+    customer_name: str,
+    subject: str,
+    status: str
+) -> str:
+
+    subject_text = subject.strip().rstrip(".")
+
+    if status == "Open":
+
+        return (
+            f"Thank you for contacting us, {customer_name}. "
+            f"We understand your concern regarding {subject_text.lower()}. "
+            f"Your ticket is currently open."
+        )
+
+    if status == "In Progress":
+
+        return (
+            f"Thank you for contacting us, {customer_name}. "
+            f"We understand your concern regarding {subject_text.lower()}. "
+            f"Your ticket is currently in progress."
+        )
+
+    # Closed
+    return (
+        f"Thank you for contacting us, {customer_name}. "
+        f"We understand your concern regarding {subject_text.lower()}. "
+        f"Your ticket is currently closed."
+    )
+
+
 @router.post("/ticket-assist")
 def ticket_ai_assist(ticket: TicketAIRequest):
 
@@ -33,42 +129,42 @@ def ticket_ai_assist(ticket: TicketAIRequest):
     }
 
     if ticket.status not in allowed_statuses:
+
         raise HTTPException(
             status_code=400,
             detail="Invalid ticket status."
         )
 
     # ---------------------------------------------------------
-    # 2. Closed ticket safeguard
+    # 2. Determine priority using Python rules
+    # ---------------------------------------------------------
+
+    priority, priority_reason = determine_priority(
+        ticket.subject,
+        ticket.description
+    )
+
+    # ---------------------------------------------------------
+    # 3. Generate safe customer reply
+    # ---------------------------------------------------------
+
+    safe_reply = generate_safe_reply(
+        ticket.customer_name,
+        ticket.subject,
+        ticket.status
+    )
+
+    # ---------------------------------------------------------
+    # 4. AI prompt
     #
-    # Closed is a business rule, so we do not allow the
-    # language model to invent current/future actions.
-    # ---------------------------------------------------------
-
-    if ticket.status == "Closed":
-
-        safe_result = f"""SUMMARY:
-{ticket.customer_name} reported that the refund was applied but has not been received.
-
-PRIORITY:
-Medium - The refund has not been received.
-
-SUGGESTED REPLY:
-Thank you for contacting us, {ticket.customer_name}. We understand your concern regarding the refund that was applied but has not been received."""
-
-        return {
-            "success": True,
-            "result": safe_result
-        }
-
-    # ---------------------------------------------------------
-    # 3. AI prompt for Open / In Progress tickets
+    # Gemma is responsible ONLY for generating the summary.
+    # Priority and customer reply are controlled by Python.
     # ---------------------------------------------------------
 
     prompt = f"""
 You are an AI assistant inside a customer support CRM.
 
-Analyze the ticket below and return ONLY these three sections.
+Analyze the support ticket below and write ONLY one summary.
 
 Customer Name: {ticket.customer_name}
 Subject: {ticket.subject}
@@ -78,93 +174,83 @@ Existing Notes: {ticket.notes if ticket.notes else "No notes available"}
 
 IMPORTANT RULES:
 
-1. CURRENT STATUS
+1. Use only information explicitly provided in the ticket.
 
-The Current Status is authoritative.
-
-If the status is Open:
-- The ticket is currently open.
-- You may say the request can be reviewed or handled.
-- Do not claim that an action has already happened unless the notes confirm it.
-
-If the status is In Progress:
-- The ticket is currently being handled.
-- You may say the support team is currently working on the request.
-- Do not claim the issue is resolved unless the notes explicitly confirm it.
-
-2. NEVER INVENT FACTS
-
-Use only information provided in the ticket.
-
-Never invent:
+2. Do not invent:
 - refund processing
 - refund completion
 - payment completion
 - compensation
-- investigations
-- approvals
+- investigation
+- approval
+- delivery
 - dates
 - actions
-- resolutions
-- promises
+- resolution
+- future promises
 
-3. PRIORITY
+3. The Current Status is authoritative.
 
-Choose exactly one:
+Open means the ticket is open.
 
-Low
-Medium
-High
+In Progress means the ticket is currently in progress.
 
-Use these guidelines:
+Closed means the ticket is closed.
 
-High:
-Urgent issues, security issues, serious financial impact, or major service failures.
+4. Do not assume that a ticket status means that a specific action was performed.
 
-Medium:
-Unresolved refunds or payments, delayed orders, or issues requiring support attention.
+For example:
 
-Low:
-General questions, minor requests, or informational queries.
+In Progress does NOT automatically mean:
+- the refund is being processed
+- the order is being investigated
+- the support team contacted the customer
 
-If a refund or payment has not been received, normally choose Medium unless the ticket clearly indicates High priority.
+Closed does NOT automatically mean:
+- the issue was resolved
+- the refund was received
+- the payment was completed
 
-4. SUGGESTED REPLY
+5. Write one clear sentence describing the customer's actual issue.
 
-Write a short, professional customer-support reply.
+IMPORTANT SUMMARY RULE:
 
-The reply must:
-- address the customer's issue
-- reflect the Current Status
-- use only confirmed information
-- avoid invented actions
-- avoid invented resolutions
-- avoid unsupported promises
+Preserve the meaning of the original Subject and Description exactly.
 
-5. DO NOT EXPLAIN YOUR REASONING
+Do NOT replace one state with another.
 
-Do not explain the rules.
-Do not describe your analysis.
-Do not show steps.
-Do not write "we are given".
-Do not write "according to the rules".
+For example:
 
-Return EXACTLY:
+"not received" must NOT become:
+- not processed
+- processing
+- pending
+- delayed
+- under review
+
+unless those words or their meaning are explicitly present in the ticket.
+
+"applied but not received" means exactly that:
+the ticket says it was applied, but the customer has not received it.
+
+Do not infer why something was not received.
+
+Do not infer that a refund is pending, processing, delayed, or under review unless the ticket explicitly says so.
+
+6. Do not write a customer reply.
+
+7. Do not choose a priority.
+
+8. Do not explain your reasoning.
+
+Return ONLY:
 
 SUMMARY:
 One clear sentence describing the customer's issue.
-
-PRIORITY:
-Choose Low, Medium, or High.
-Give one short reason.
-
-SUGGESTED REPLY:
-Write 1-2 professional sentences.
-
 """
 
     # ---------------------------------------------------------
-    # 4. Ollama request
+    # 5. Ollama request
     # ---------------------------------------------------------
 
     payload = {
@@ -174,7 +260,7 @@ Write 1-2 professional sentences.
         "think": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 250
+            "num_predict": 100
         }
     }
 
@@ -206,7 +292,7 @@ Write 1-2 professional sentences.
         ).strip()
 
         # -----------------------------------------------------
-        # 5. Make sure the model actually returned something
+        # 6. Make sure AI returned something
         # -----------------------------------------------------
 
         if not ai_result:
@@ -216,13 +302,47 @@ Write 1-2 professional sentences.
                 detail="AI assistant returned an empty response."
             )
 
+        # -----------------------------------------------------
+        # 7. Remove accidental sections if Gemma adds them
+        # -----------------------------------------------------
+
+        if "PRIORITY:" in ai_result:
+
+            ai_result = ai_result.split(
+                "PRIORITY:"
+            )[0].strip()
+
+        if "SUGGESTED REPLY:" in ai_result:
+
+            ai_result = ai_result.split(
+                "SUGGESTED REPLY:"
+            )[0].strip()
+
+        # -----------------------------------------------------
+        # 8. Build final response
+        #
+        # Summary = AI
+        # Priority = Python
+        # Suggested Reply = Python
+        # -----------------------------------------------------
+
+        final_result = f"""
+{ai_result}
+
+PRIORITY:
+{priority} - {priority_reason}
+
+SUGGESTED REPLY:
+{safe_reply}
+""".strip()
+
         return {
             "success": True,
-            "result": ai_result
+            "result": final_result
         }
 
     # ---------------------------------------------------------
-    # 6. Ollama not running / connection problem
+    # 9. Ollama connection error
     # ---------------------------------------------------------
 
     except urllib.error.URLError:
@@ -236,7 +356,7 @@ Write 1-2 professional sentences.
         )
 
     # ---------------------------------------------------------
-    # 7. Request timeout
+    # 10. Timeout
     # ---------------------------------------------------------
 
     except TimeoutError:
@@ -250,11 +370,15 @@ Write 1-2 professional sentences.
         )
 
     # ---------------------------------------------------------
-    # 8. Other unexpected errors
+    # 11. Preserve HTTP exceptions
     # ---------------------------------------------------------
 
     except HTTPException:
         raise
+
+    # ---------------------------------------------------------
+    # 12. Unexpected error
+    # ---------------------------------------------------------
 
     except Exception as e:
 
