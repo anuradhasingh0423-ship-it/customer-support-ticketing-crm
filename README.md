@@ -100,7 +100,8 @@ uvicorn app.main:app --reload
 
 Open the following URL in your browser:
 
-http://127.0.0.1:8000
+https://customer-support-ticketing-crm-rub0.onrender.com/
+
 API Endpoints
 Tickets
 Method	Endpoint	Description
@@ -140,20 +141,21 @@ The application is deployed using Render.
 
 The deployed application can be accessed through the Render deployment URL.
 
-Screenshots
+## Screenshots
+
 Dashboard
 
-Add a screenshot of the CRM dashboard here.
+![alt text](image.png)
 
 Create Ticket
 
-Add a screenshot of the ticket creation form here.
+![alt text](image-1.png)
 
 Ticket Details
 
-Add a screenshot of the ticket details page here.
+![alt text](image-2.png)
 
-Future Improvements
+## Future Improvements
 
 Possible improvements for future versions include:
 
@@ -174,5 +176,4 @@ Bachelor of Engineering
 Artificial Intelligence & Machine Learning
 
 GitHub:
-
 https://github.com/anuradhasingh0423-ship-it
