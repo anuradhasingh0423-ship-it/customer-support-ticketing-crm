@@ -57,6 +57,16 @@ def home(request: Request):
     )
 
 
+@app.get("/tickets")
+def tickets_page(request: Request):
+    return templates.TemplateResponse(
+        "tickets.html",
+        {
+            "request": request
+        }
+    )
+
+
 @app.get("/health")
 def health_check():
     return {

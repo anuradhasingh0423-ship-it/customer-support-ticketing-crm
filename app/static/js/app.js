@@ -7,6 +7,9 @@ let currentTicket = null;
 const ticketTableBody =
     document.getElementById("ticketTableBody");
 
+const recentTicketTableBody =
+    document.getElementById("recentTicketTableBody");
+
 const searchInput =
     document.getElementById("searchInput");
 
@@ -22,85 +25,109 @@ const detailModal =
 const createTicketForm =
     document.getElementById("createTicketForm");
 
+const openCreateModalBtn =
+    document.getElementById("openCreateModalBtn");
+
+const refreshBtn =
+    document.getElementById("refreshBtn");
 
 
-async function loadTickets() {
+    async function loadTickets() {
 
-    try {
-
-        const search =
-            searchInput.value.trim();
-
-        const status =
-            statusFilter.value;
-
-
-        const params =
-            new URLSearchParams();
-
-
-        if (search) {
-            params.append(
-                "search",
-                search
-            );
+        try {
+    
+            const search =
+                searchInput
+                    ? searchInput.value.trim()
+                    : "";
+    
+            const status =
+                statusFilter
+                    ? statusFilter.value
+                    : "";
+    
+            const params =
+                new URLSearchParams();
+    
+            if (search) {
+    
+                params.append(
+                    "search",
+                    search
+                );
+    
+            }
+    
+            if (status) {
+    
+                params.append(
+                    "status",
+                    status
+                );
+    
+            }
+    
+            let url = API_URL;
+    
+            if (params.toString()) {
+    
+                url +=
+                    "?" +
+                    params.toString();
+    
+            }
+    
+            const response =
+                await fetch(url);
+    
+            if (!response.ok) {
+    
+                throw new Error(
+                    "Failed to load tickets"
+                );
+    
+            }
+    
+            const tickets =
+                await response.json();
+    
+            if (ticketTableBody) {
+    
+                renderTickets(tickets);
+    
+            }
+    
+            if (recentTicketTableBody) {
+    
+                renderRecentTickets(tickets);
+    
+            }
+    
+            updateStatistics();
+    
+        } catch (error) {
+    
+            console.error(error);
+    
+            if (ticketTableBody) {
+    
+                ticketTableBody.innerHTML = `
+                    <tr>
+                        <td
+                            colspan="6"
+                            class="empty"
+                        >
+                            Unable to load tickets.
+                            Please try again.
+                        </td>
+                    </tr>
+                `;
+    
+            }
+    
         }
-
-
-        if (status) {
-            params.append(
-                "status",
-                status
-            );
-        }
-
-
-        let url = API_URL;
-
-        if (params.toString()) {
-
-            url +=
-                "?" +
-                params.toString();
-        }
-
-
-        const response =
-            await fetch(url);
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load tickets"
-            );
-        }
-
-
-        const tickets =
-            await response.json();
-
-
-        renderTickets(tickets);
-
-        updateStatistics(tickets);
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        ticketTableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty">
-                    Unable to load tickets.
-                    Please try again.
-                </td>
-            </tr>
-        `;
+    
     }
-}
-
 
 
 function renderTickets(tickets) {
@@ -168,6 +195,85 @@ function renderTickets(tickets) {
         }).join("");
 }
 
+
+function renderRecentTickets(tickets) {
+
+    if (!recentTicketTableBody) {
+        return;
+    }
+
+    if (!tickets.length) {
+
+        recentTicketTableBody.innerHTML = `
+            <tr>
+                <td
+                    colspan="6"
+                    class="empty"
+                >
+                    No tickets found.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+
+    const recentTickets =
+        tickets.slice(0, 5);
+
+
+    recentTicketTableBody.innerHTML =
+        recentTickets.map(ticket => {
+
+            return `
+                <tr>
+
+                    <td>
+                        <span class="ticket-id">
+                            ${escapeHtml(ticket.ticket_id)}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="customer-name">
+                            ${escapeHtml(ticket.customer_name)}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="subject">
+                            ${escapeHtml(ticket.subject)}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${getStatusBadge(ticket.status)}
+                    </td>
+
+                    <td>
+                        ${formatDate(ticket.created_at)}
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="view-btn"
+                            onclick="openTicket(
+                                '${ticket.ticket_id}'
+                            )"
+                        >
+                            View
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+
+}
 
 
 function getStatusBadge(status) {
@@ -547,14 +653,6 @@ function renderTicketDetails(ticket) {
             margin-bottom: 20px;
             
         ">
-            <button 
-                class="primary-btn"
-                id="aiAssistBtn"
-                onclick="runAIAssist()"
-                style="width: 100%;"
-            >
-                 AI Assist
-            </button>
         </div>
 
         <div
@@ -1007,45 +1105,46 @@ document
 let searchTimeout;
 
 
-searchInput.addEventListener(
-    "input",
-    function() {
+if (searchInput) {
 
-        clearTimeout(
-            searchTimeout
-        );
+    searchInput.addEventListener(
+        "input",
+        function() {
 
+            clearTimeout(searchTimeout);
 
-        searchTimeout =
-            setTimeout(
-                () => {
+            searchTimeout =
+                setTimeout(
+                    () => {
+                        loadTickets();
+                    },
+                    250
+                );
 
-                    loadTickets();
+        }
+    );
 
-                },
-                250
-            );
-    }
-);
-
-
-
-statusFilter.addEventListener(
-    "change",
-    () => {
-
-        loadTickets();
-
-    }
-);
+}
 
 
 
-document
-    .getElementById(
-        "refreshBtn"
-    )
-    .addEventListener(
+
+if (statusFilter) {
+
+    statusFilter.addEventListener(
+        "change",
+        () => {
+            loadTickets();
+        }
+    );
+
+}
+
+
+
+if (refreshBtn) {
+
+    refreshBtn.addEventListener(
         "click",
         () => {
 
@@ -1057,6 +1156,8 @@ document
 
         }
     );
+
+}
 
 
 
@@ -1147,5 +1248,49 @@ function escapeHtml(value) {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 }
+
+
+
+document.querySelectorAll(".nav-item").forEach(item => {
+
+    item.addEventListener("click", function(event) {
+
+        event.preventDefault();
+
+        // Remove active from all navigation items
+        document.querySelectorAll(".nav-item").forEach(nav => {
+            nav.classList.remove("active");
+        });
+
+        // Make clicked item active
+        this.classList.add("active");
+
+        const target = this.getAttribute("href");
+
+        // Dashboard
+        if (target === "#") {
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        }
+
+        // Tickets
+        else if (target === "#tickets") {
+
+            const ticketsSection =
+                document.getElementById("tickets");
+
+            if (ticketsSection) {
+                ticketsSection.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+        }
+
+    });
+
+});
 
 loadTickets();

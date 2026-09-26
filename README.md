@@ -16,8 +16,7 @@ The application allows support teams to create, search, view, and update custome
 - Add notes and comments to tickets
 - Dashboard with ticket statistics
 - Responsive web interface
-- AI Assistant for ticket summary, priority, and suggested replies
-- Local AI processing using Ollama
+
 
 ## Tech Stack
 

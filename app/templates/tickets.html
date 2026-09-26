@@ -2,12 +2,21 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Support CRM</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Tickets - Support CRM</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
 </head>
 
 <body>
@@ -17,31 +26,46 @@
     <aside class="sidebar">
 
         <div class="brand">
-            <div class="brand-icon">S</div>
+
+            <div class="brand-icon">
+                S
+            </div>
 
             <div>
                 <h2>SupportCRM</h2>
                 <span>Customer Support</span>
             </div>
+
         </div>
+
 
         <nav class="sidebar-nav">
 
-            <a href="/" class="nav-item active">
+            <a
+                href="/"
+                class="nav-item"
+            >
                 <span>▦</span>
                 Dashboard
             </a>
 
-            <a href="/tickets" class="nav-item">
+            <a
+                href="/tickets"
+                class="nav-item active"
+            >
                 <span>🎫</span>
                 Tickets
             </a>
 
         </nav>
 
+
         <div class="sidebar-footer">
+
             <div class="status-dot"></div>
+
             System Online
+
         </div>
 
     </aside>
@@ -51,14 +75,18 @@
 
     <main class="main-content">
 
-        <!-- TOP BAR -->
-
         <header class="topbar">
 
             <div>
-                <h1>Dashboard</h1>
-                <p>Manage and track customer support tickets.</p>
+
+                <h1>Tickets</h1>
+
+                <p>
+                    View, search and manage customer support tickets.
+                </p>
+
             </div>
+
 
             <button
                 class="primary-btn"
@@ -71,81 +99,22 @@
         </header>
 
 
-        <!-- ================= STATISTICS ================= -->
+        <!-- ================= TICKET MANAGEMENT ================= -->
 
-        <section class="stats-grid">
-
-            <div class="stat-card">
-
-                <div class="stat-icon total-icon">
-                    🎫
-                </div>
-
-                <div>
-                    <p>Total Tickets</p>
-                    <h2 id="totalTickets">0</h2>
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-icon open-icon">
-                    ●
-                </div>
-
-                <div>
-                    <p>Open</p>
-                    <h2 id="openTickets">0</h2>
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-icon progress-icon">
-                    ◐
-                </div>
-
-                <div>
-                    <p>In Progress</p>
-                    <h2 id="progressTickets">0</h2>
-                </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <div class="stat-icon closed-icon">
-                    ✓
-                </div>
-
-                <div>
-                    <p>Closed</p>
-                    <h2 id="closedTickets">0</h2>
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- ================= TICKETS ================= -->
-
-        <section
-            class="tickets-section"
-            id="tickets"
-        >
+        <section class="tickets-section">
 
             <div class="section-header">
 
                 <div>
-                    <h2>Support Tickets</h2>
-                    <p>View, search and manage customer tickets.</p>
+
+                    <h2>All Support Tickets</h2>
+
+                    <p>
+                        Search, filter and manage customer tickets.
+                    </p>
+
                 </div>
+
 
                 <button
                     class="refresh-btn"
@@ -178,10 +147,23 @@
                     id="statusFilter"
                     class="status-filter"
                 >
-                    <option value="">All Statuses</option>
-                    <option value="Open">Open</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Closed">Closed</option>
+
+                    <option value="">
+                        All Statuses
+                    </option>
+
+                    <option value="Open">
+                        Open
+                    </option>
+
+                    <option value="In Progress">
+                        In Progress
+                    </option>
+
+                    <option value="Closed">
+                        Closed
+                    </option>
+
                 </select>
 
             </div>
@@ -196,25 +178,35 @@
                     <thead>
 
                         <tr>
+
                             <th>Ticket</th>
+
                             <th>Customer</th>
+
                             <th>Subject</th>
+
                             <th>Status</th>
+
                             <th>Created</th>
+
                             <th>Action</th>
+
                         </tr>
 
                     </thead>
 
+
                     <tbody id="ticketTableBody">
 
                         <tr>
+
                             <td
                                 colspan="6"
                                 class="loading"
                             >
                                 Loading tickets...
                             </td>
+
                         </tr>
 
                     </tbody>
@@ -242,9 +234,17 @@
             <div class="modal-header">
 
                 <div>
-                    <h2>Create New Ticket</h2>
-                    <p>Create a support request for a customer.</p>
+
+                    <h2>
+                        Create New Ticket
+                    </h2>
+
+                    <p>
+                        Create a support request for a customer.
+                    </p>
+
                 </div>
+
 
                 <button
                     class="close-btn"
@@ -332,6 +332,7 @@
                         Cancel
                     </button>
 
+
                     <button
                         type="submit"
                         class="primary-btn"
@@ -362,12 +363,15 @@
             <div class="modal-header">
 
                 <div>
+
                     <h2 id="detailTitle">
                         Ticket Details
                     </h2>
 
                     <p id="detailTicketId"></p>
+
                 </div>
+
 
                 <button
                     class="close-btn"
@@ -381,7 +385,7 @@
 
             <div id="ticketDetails">
 
-                <!-- Filled by JavaScript -->
+                <!-- JavaScript fills this -->
 
             </div>
 
@@ -398,7 +402,9 @@
         id="toast"
         class="toast"
     >
+
         <span id="toastMessage"></span>
+
     </div>
 
 
