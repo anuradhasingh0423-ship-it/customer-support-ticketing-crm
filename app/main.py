@@ -6,9 +6,6 @@ from fastapi.templating import Jinja2Templates
 
 from .database import Base, engine
 from .routers import tickets
-from app.routers import ai
-
-
 
 
 # Create database tables
@@ -44,7 +41,6 @@ templates = Jinja2Templates(
 
 # Register ticket API
 app.include_router(tickets.router)
-app.include_router(ai.router)
 
 
 @app.get("/")
