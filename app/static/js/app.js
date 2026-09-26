@@ -648,26 +648,7 @@ function renderTicketDetails(ticket) {
 
         </div>
 
-        <div style="
-            margin-top: 20px;
-            margin-bottom: 20px;
-            
-        ">
-        </div>
-
-        <div
-            id="aiResult"
-            style="
-                display:none;
-                margin-top: 10px;
-                margin-bottom: 25px;
-                padding: 18px;
-                border: 1px solid #e5e7eb;
-                border-radius: 12px;
-                background: #f8fafc;
-                "
-
-        ></div>
+        
 
         <h3 class="detail-section-title">
             Update Status
