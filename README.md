@@ -96,33 +96,44 @@ pip install -r requirements.txt
 5. Start the application
 uvicorn app.main:app --reload
 
-6. Open the application
+6. Deployment
 
-Open the following URL in your browser:
+The application is deployed using Render.
+
+**Live Application:**
 
 https://customer-support-ticketing-crm-rub0.onrender.com/
 
 API Endpoints
+
 Tickets
-Method	Endpoint	Description
-POST	/api/tickets	Create a new ticket
-GET	/api/tickets	Get all tickets
-GET	/api/tickets/{ticket_id}	Get ticket details
-PUT	/api/tickets/{ticket_id}	Update a ticket
-Ticket Status
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/tickets` | Create a new ticket |
+| GET | `/api/tickets` | Get all tickets |
+| GET | `/api/tickets/{ticket_id}` | Get ticket details |
+| PUT | `/api/tickets/{ticket_id}` | Update a ticket |
+
+
+## Ticket Status
 
 Tickets can have one of the following statuses:
 
-Open
-In Progress
-Closed
-Database
+- Open
+- In Progress
+- Closed
+
+## Database
 
 The application uses SQLite for local development.
 
 The database is created automatically when the application starts.
 
 SQLite was selected to keep the project simple and easy to run during development and evaluation.
+
 
 ## Testing
 
