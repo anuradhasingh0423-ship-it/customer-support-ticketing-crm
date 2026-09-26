@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import urllib.request
 import urllib.error
 import json
+import os
 
 
 router = APIRouter(
@@ -19,102 +20,6 @@ class TicketAIRequest(BaseModel):
     notes: str = ""
 
 
-# -------------------------------------------------------------
-# Determine ticket priority using simple business rules.
-# Priority is handled by Python instead of the AI model so that
-# the result is consistent.
-# -------------------------------------------------------------
-
-def determine_priority(subject: str, description: str) -> tuple[str, str]:
-
-    text = f"{subject} {description}".lower()
-
-    # High-priority situations
-    high_keywords = [
-        "security breach",
-        "hacked",
-        "account compromised",
-        "fraud",
-        "unauthorized access",
-        "critical",
-        "emergency",
-        "major outage",
-        "serious financial loss"
-    ]
-
-    for keyword in high_keywords:
-        if keyword in text:
-            return (
-                "High",
-                f"High priority because the ticket mentions {keyword}."
-            )
-
-    # Medium-priority situations
-    medium_keywords = [
-        "refund",
-        "payment",
-        "order not received",
-        "order hasn't arrived",
-        "order has not arrived",
-        "not received",
-        "delayed",
-        "delay",
-        "missing order",
-        "delivery"
-    ]
-
-    for keyword in medium_keywords:
-        if keyword in text:
-            return (
-                "Medium",
-                "The ticket concerns an unresolved customer issue."
-            )
-
-    # General / informational tickets
-    return (
-        "Low",
-        "The ticket appears to be a general or low-urgency request."
-    )
-
-
-# -------------------------------------------------------------
-# Generate a safe customer reply based on ticket status.
-# Python controls this so the AI cannot invent actions,
-# investigations, resolutions, or future promises.
-# -------------------------------------------------------------
-
-def generate_safe_reply(
-    customer_name: str,
-    subject: str,
-    status: str
-) -> str:
-
-    subject_text = subject.strip().rstrip(".")
-
-    if status == "Open":
-
-        return (
-            f"Thank you for contacting us, {customer_name}. "
-            f"We understand your concern regarding {subject_text.lower()}. "
-            f"Your ticket is currently open."
-        )
-
-    if status == "In Progress":
-
-        return (
-            f"Thank you for contacting us, {customer_name}. "
-            f"We understand your concern regarding {subject_text.lower()}. "
-            f"Your ticket is currently in progress."
-        )
-
-    # Closed
-    return (
-        f"Thank you for contacting us, {customer_name}. "
-        f"We understand your concern regarding {subject_text.lower()}. "
-        f"Your ticket is currently closed."
-    )
-
-
 @router.post("/ticket-assist")
 def ticket_ai_assist(ticket: TicketAIRequest):
 
@@ -129,42 +34,116 @@ def ticket_ai_assist(ticket: TicketAIRequest):
     }
 
     if ticket.status not in allowed_statuses:
-
         raise HTTPException(
             status_code=400,
             detail="Invalid ticket status."
         )
 
     # ---------------------------------------------------------
-    # 2. Determine priority using Python rules
+    # 2. Generate safe customer reply in Python
+    #
+    # This prevents the AI from inventing:
+    # - investigations
+    # - refunds
+    # - resolutions
+    # - future promises
     # ---------------------------------------------------------
 
-    priority, priority_reason = determine_priority(
-        ticket.subject,
-        ticket.description
-    )
+    subject = ticket.subject.strip()
+
+    if ticket.status == "Open":
+
+        safe_reply = (
+            f"Thank you for contacting us, {ticket.customer_name}. "
+            f"We understand your concern regarding {subject.lower()}. "
+            f"Your ticket is currently open."
+        )
+
+    elif ticket.status == "In Progress":
+
+        safe_reply = (
+            f"Thank you for contacting us, {ticket.customer_name}. "
+            f"We understand your concern regarding {subject.lower()}. "
+            f"Your ticket is currently in progress."
+        )
+
+    else:
+
+        safe_reply = (
+            f"Thank you for contacting us, {ticket.customer_name}. "
+            f"We understand your concern regarding {subject.lower()}. "
+            f"Your ticket is currently closed."
+        )
 
     # ---------------------------------------------------------
-    # 3. Generate safe customer reply
+    # 3. Determine priority in Python
+    #
+    # This makes priority predictable and prevents the small
+    # local model from giving inconsistent results.
     # ---------------------------------------------------------
 
-    safe_reply = generate_safe_reply(
-        ticket.customer_name,
-        ticket.subject,
-        ticket.status
-    )
+    text = (
+        f"{ticket.subject} "
+        f"{ticket.description} "
+        f"{ticket.notes}"
+    ).lower()
+
+    high_keywords = [
+        "fraud",
+        "hacked",
+        "security breach",
+        "unauthorized",
+        "account compromised",
+        "critical",
+        "urgent",
+        "stolen",
+        "major outage"
+    ]
+
+    medium_keywords = [
+        "refund",
+        "payment",
+        "not received",
+        "delayed",
+        "delay",
+        "order",
+        "charged",
+        "billing",
+        "missing"
+    ]
+
+    if any(keyword in text for keyword in high_keywords):
+        priority = "High"
+        priority_reason = (
+            "The ticket describes an urgent, security-related, "
+            "or serious customer issue."
+        )
+
+    elif any(keyword in text for keyword in medium_keywords):
+        priority = "Medium"
+        priority_reason = (
+            "The ticket concerns an unresolved customer issue "
+            "requiring support attention."
+        )
+
+    else:
+        priority = "Low"
+        priority_reason = (
+            "The ticket describes a general or lower-impact "
+            "customer request."
+        )
 
     # ---------------------------------------------------------
     # 4. AI prompt
     #
-    # Gemma is responsible ONLY for generating the summary.
+    # The AI is used only to create the ticket summary.
     # Priority and customer reply are controlled by Python.
     # ---------------------------------------------------------
 
     prompt = f"""
 You are an AI assistant inside a customer support CRM.
 
-Analyze the support ticket below and write ONLY one summary.
+Analyze the support ticket below.
 
 Customer Name: {ticket.customer_name}
 Subject: {ticket.subject}
@@ -174,9 +153,11 @@ Existing Notes: {ticket.notes if ticket.notes else "No notes available"}
 
 IMPORTANT RULES:
 
-1. Use only information explicitly provided in the ticket.
+1. Use ONLY information provided in the ticket.
 
-2. Do not invent:
+2. Do NOT invent facts.
+
+Never invent:
 - refund processing
 - refund completion
 - payment completion
@@ -189,15 +170,15 @@ IMPORTANT RULES:
 - resolution
 - future promises
 
-3. The Current Status is authoritative.
+3. Current Status is authoritative.
 
-Open means the ticket is open.
+Open means the ticket is currently open.
 
 In Progress means the ticket is currently in progress.
 
-Closed means the ticket is closed.
+Closed means the ticket is currently closed.
 
-4. Do not assume that a ticket status means that a specific action was performed.
+4. Do not assume that a status means a specific action happened.
 
 For example:
 
@@ -211,37 +192,20 @@ Closed does NOT automatically mean:
 - the refund was received
 - the payment was completed
 
-5. Write one clear sentence describing the customer's actual issue.
+5. SUMMARY
 
-IMPORTANT SUMMARY RULE:
+Write exactly ONE sentence describing the customer's actual issue.
 
-Preserve the meaning of the original Subject and Description exactly.
+Do not describe actions that are not explicitly confirmed.
 
-Do NOT replace one state with another.
+6. Do NOT generate:
+- priority
+- suggested reply
+- reasoning
+- explanations
+- recommendations
 
-For example:
-
-"not received" must NOT become:
-- not processed
-- processing
-- pending
-- delayed
-- under review
-
-unless those words or their meaning are explicitly present in the ticket.
-
-"applied but not received" means exactly that:
-the ticket says it was applied, but the customer has not received it.
-
-Do not infer why something was not received.
-
-Do not infer that a refund is pending, processing, delayed, or under review unless the ticket explicitly says so.
-
-6. Do not write a customer reply.
-
-7. Do not choose a priority.
-
-8. Do not explain your reasoning.
+The application generates those separately.
 
 Return ONLY:
 
@@ -250,49 +214,90 @@ One clear sentence describing the customer's issue.
 """
 
     # ---------------------------------------------------------
-    # 5. Ollama request
+    # 5. Get OpenAI API key
     # ---------------------------------------------------------
 
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "OPENAI_API_KEY is not configured. "
+                "Add it to the Render environment variables."
+            )
+        )
+
+    # ---------------------------------------------------------
+    # 6. OpenAI model
+    # ---------------------------------------------------------
+
+    model = os.getenv(
+        "OPENAI_MODEL",
+        "gpt-5.6-luna"
+    )
+
     payload = {
-        "model": "gemma3:1b",
-        "prompt": prompt,
-        "stream": False,
-        "think": False,
-        "options": {
-            "temperature": 0.2,
-            "num_predict": 100
-        }
+        "model": model,
+        "input": prompt,
+        "max_output_tokens": 100
     }
+
+    # ---------------------------------------------------------
+    # 7. Send request to OpenAI
+    # ---------------------------------------------------------
 
     try:
 
         data = json.dumps(payload).encode("utf-8")
 
         request = urllib.request.Request(
-            "http://localhost:11434/api/generate",
+            "https://api.openai.com/v1/responses",
             data=data,
             headers={
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
             },
             method="POST"
         )
 
         with urllib.request.urlopen(
             request,
-            timeout=300
+            timeout=60
         ) as response:
 
             result = json.loads(
                 response.read().decode("utf-8")
             )
 
-        ai_result = result.get(
-            "response",
-            ""
+        # -----------------------------------------------------
+        # 8. Extract generated text
+        # -----------------------------------------------------
+
+        text_parts = []
+
+        for item in result.get("output", []):
+
+            for content in item.get("content", []):
+
+                if content.get("type") == "output_text":
+
+                    generated_text = content.get(
+                        "text",
+                        ""
+                    ).strip()
+
+                    if generated_text:
+                        text_parts.append(
+                            generated_text
+                        )
+
+        ai_result = "\n".join(
+            text_parts
         ).strip()
 
         # -----------------------------------------------------
-        # 6. Make sure AI returned something
+        # 9. Check empty AI response
         # -----------------------------------------------------
 
         if not ai_result:
@@ -303,7 +308,7 @@ One clear sentence describing the customer's issue.
             )
 
         # -----------------------------------------------------
-        # 7. Remove accidental sections if Gemma adds them
+        # 10. Clean accidental sections
         # -----------------------------------------------------
 
         if "PRIORITY:" in ai_result:
@@ -319,11 +324,18 @@ One clear sentence describing the customer's issue.
             )[0].strip()
 
         # -----------------------------------------------------
-        # 8. Build final response
-        #
-        # Summary = AI
-        # Priority = Python
-        # Suggested Reply = Python
+        # 11. Make sure SUMMARY exists
+        # -----------------------------------------------------
+
+        if not ai_result.upper().startswith("SUMMARY:"):
+
+            ai_result = (
+                "SUMMARY:\n"
+                + ai_result
+            )
+
+        # -----------------------------------------------------
+        # 12. Build final CRM response
         # -----------------------------------------------------
 
         final_result = f"""
@@ -342,21 +354,68 @@ SUGGESTED REPLY:
         }
 
     # ---------------------------------------------------------
-    # 9. Ollama connection error
+    # 13. OpenAI API error
     # ---------------------------------------------------------
 
-    except urllib.error.URLError:
+    except urllib.error.HTTPError as e:
+
+        try:
+
+            error_body = e.read().decode(
+                "utf-8"
+            )
+
+            error_data = json.loads(
+                error_body
+            )
+
+            error_message = (
+                error_data
+                .get("error", {})
+                .get(
+                    "message",
+                    "OpenAI API request failed."
+                )
+            )
+
+        except Exception:
+
+            error_message = (
+                "OpenAI API request failed."
+            )
+
+        print(
+            f"OpenAI API Error: {error_message}"
+        )
 
         raise HTTPException(
-            status_code=503,
+            status_code=502,
             detail=(
-                "Ollama is not running. "
-                "Please start Ollama and try again."
+                f"AI service error: "
+                f"{error_message}"
             )
         )
 
     # ---------------------------------------------------------
-    # 10. Timeout
+    # 14. Connection error
+    # ---------------------------------------------------------
+
+    except urllib.error.URLError as e:
+
+        print(
+            f"OpenAI connection error: {e}"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Could not connect to the AI service. "
+                "Please try again."
+            )
+        )
+
+    # ---------------------------------------------------------
+    # 15. Timeout
     # ---------------------------------------------------------
 
     except TimeoutError:
@@ -370,23 +429,27 @@ SUGGESTED REPLY:
         )
 
     # ---------------------------------------------------------
-    # 11. Preserve HTTP exceptions
+    # 16. Preserve FastAPI HTTP exceptions
     # ---------------------------------------------------------
 
     except HTTPException:
+
         raise
 
     # ---------------------------------------------------------
-    # 12. Unexpected error
+    # 17. Unexpected error
     # ---------------------------------------------------------
 
     except Exception as e:
 
-        print(f"AI Error: {e}")
+        print(
+            f"AI Error: {e}"
+        )
 
         raise HTTPException(
             status_code=500,
             detail=(
-                "AI assistant could not process the ticket."
+                "AI assistant could not process "
+                "the ticket."
             )
         )
